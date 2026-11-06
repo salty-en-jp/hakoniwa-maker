@@ -37,13 +37,20 @@
       <div id="hud"><div id="hudScore">★ 0</div><div id="hudLines"></div></div>
       <div id="toast" hidden></div>
       <div id="endcard" hidden><div class="card"><h2 id="endTitle">クリア!</h2><p id="endText"></p><div class="row"><button class="btn primary" id="retryBtn">もう一度</button><button class="btn" id="backBtn">編集に戻る</button></div></div></div>
+      <div id="choice" hidden role="dialog" aria-label="選択肢"><div id="choiceTitle"></div><div id="choiceOpts" role="listbox"></div></div>
+      <div id="dialog" hidden role="dialog" aria-live="polite"><div id="dialogName"></div><div id="dialogText"></div><span class="dnext" aria-hidden="true">▼</span></div>
       <div id="log" hidden><button class="x" id="logClear" aria-label="ログを閉じる">×</button><div id="logLines"></div></div>
       <div id="touch" aria-hidden="true">
         <div class="dpad">
           <button class="u" data-k="ArrowUp">▲</button><button class="l" data-k="ArrowLeft">◀</button>
           <button class="r" data-k="ArrowRight">▶</button><button class="d" data-k="ArrowDown">▼</button>
         </div>
-        <button class="jump" data-k="Space">ジャンプ</button>
+        <div class="abtns">
+          <button class="ab" data-k="KeyK">ミサイル</button>
+          <button class="ab" data-k="KeyJ">うつ</button>
+          <button class="ab" data-k="KeyE">はなす</button>
+          <button class="ab jump" data-k="Space">ジャンプ<br><small>決定</small></button>
+        </div>
       </div>
     </div>
 

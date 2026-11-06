@@ -60,6 +60,9 @@ textarea#io{font-family:var(--font-mono);font-size:11.5px;min-height:70px;resize
 .params{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px}
 .params label.bool{display:flex;align-items:center;gap:6px}
 .params label.bool input{width:18px}
+.params label.wide{grid-column:1/-1}
+.params textarea{font-family:var(--font-ui);font-size:13px;line-height:1.5;resize:vertical}
+.prow textarea{font-family:var(--font-mono);font-size:12px;resize:vertical}
 .addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
 
 /* ---------- ロジック ---------- */

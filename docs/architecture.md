@@ -23,14 +23,18 @@ src/
   assets/
     builtin.js             組み込みロジックアセットと、新規作成のひな形
   samples/
-    coin-athletic.js       サンプルステージ
+    index.js               サンプルの一覧(シーン タブの「サンプルを開く」)
+    helpers.js             サンプルづくりの道具
+    coin-athletic.js       3Dアクション
+    village.js             ADV + ターン制RPG
+    arena.js               シューター / サバイバル
   editor/                  エディタの画面
     state.js               エディタの状態と、部品どうしをつなぐ合図(イベント)
     actions.js             エディタの操作(選択、追加、削除、読み込みなど)
     dom.js                 画面づくりの小さな道具
     viewport.js            3Dの舞台: カメラ、ライト、視点操作、ギズモ、クリックでの選択
     play-mode.js           再生と停止の切り替え
-    play-ui.js             再生中の表示と、スマホ用の画面ボタン
+    play-ui.js             再生中の表示(HUD、会話ウィンドウ、選択肢、結果)と、スマホ用の画面ボタン
     keyboard.js            キーボード操作
     panels/
       tabs.js              タブの切り替え
@@ -67,7 +71,7 @@ main.js → editor/ → core/
 ## 新しいものを足すとき
 
 - **組み込みロジック**: `src/assets/builtin.js` の `BUILTIN_ASSETS` に足します。すでに保存されているプロジェクトには自動で入らないので、「サンプルに戻す」で確かめてください
-- **サンプルステージ**: `src/samples/` にファイルを足し、`scene-panel.js` から読み込めるようにします
+- **サンプル**: `src/samples/` にファイルを足し、`src/samples/index.js` の `SAMPLES` に並べます
 - **形**: `core/defs.js` の `SHAPES` と `core/mesh.js` の `GEOMETRY` に足します
 - **合図の共通語**: [messages.md](messages.md) の表に足します
 - **ロジックから使える命令**: `self` は `Runtime.spawn()`、`game` は `Runtime.createGameApi()` に足し、`logic-panel.js` の説明と README の表も更新します

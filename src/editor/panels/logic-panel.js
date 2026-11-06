@@ -43,6 +43,8 @@ const API_HELP = `
   <dt>grounded</dt><dd>何かの上に立っているか</dd>
   <dt>name / tag</dt><dd>名前とタグ</dd>
   <dt>startPosition</dt><dd>再生開始時の位置</dd>
+  <dt>data</dt><dd>同じオブジェクトのロジックで共有するメモ(data.hp など)</dd>
+  <dt>listens('名前')</dt><dd>その合図を受け取れるか</dd>
   <dt>setColor('#ff0000')</dt><dd>色を変える</dd>
   <dt>destroy()</dt><dd>消える(子も一緒に)</dd>
   <dt>parent / children</dt><dd>親の self、子の self の配列</dd>
@@ -59,6 +61,11 @@ const API_HELP = `
   <dt>score / addScore(n)</dt><dd>点数</dd>
   <dt>message('文字', 秒)</dt><dd>画面に表示</dd>
   <dt>hud('名前', '文字')</dt><dd>左上に1行表示。null で消す</dd>
+  <dt>await wait(秒)</dt><dd>待つ。フックを async にすると使える</dd>
+  <dt>await ui.say('名前', 'セリフ')</dt><dd>会話ウィンドウ。送られるまで待つ</dd>
+  <dt>await ui.choose(['はい','いいえ'], '見出し')</dt><dd>選択肢。選ばれた番号が返る</dd>
+  <dt>pause() / resume()</dt><dd>世界を止める・動かす(会話と wait は動く)</dd>
+  <dt>nearest(self, {tag, maxDist, listens})</dt><dd>いちばん近いものを探す</dd>
   <dt>win('文字') / lose('文字')</dt><dd>クリア / ゲームオーバー</dd>
   <dt>find('名前')</dt><dd>名前で他のオブジェクトを探す</dd>
   <dt>findAll('タグ')</dt><dd>タグで全部探す(配列)</dd>
@@ -75,6 +82,8 @@ function statusHtml(code) {
 function paramRow(p, i) {
   const def = p.type === 'bool'
     ? `<input type="checkbox" id="a-pd-${i}" data-pi="${i}" data-pf="def" ${p.def ? 'checked' : ''} aria-label="初期値">`
+    : p.type === 'longtext'
+    ? `<textarea id="a-pd-${i}" data-pi="${i}" data-pf="def" rows="2" aria-label="初期値">${esc(p.def)}</textarea>`
     : `<input id="a-pd-${i}" data-pi="${i}" data-pf="def" ${p.type === 'number' ? 'type="number" step="any"' : ''} value="${esc(p.def)}" aria-label="初期値">`;
   return `<div class="prow">
     <input id="a-pk-${i}" data-pi="${i}" data-pf="key" value="${esc(p.key)}" aria-label="パラメータ名">
@@ -82,6 +91,7 @@ function paramRow(p, i) {
       <option value="number" ${p.type === 'number' ? 'selected' : ''}>数値</option>
       <option value="text" ${p.type === 'text' ? 'selected' : ''}>文字</option>
       <option value="bool" ${p.type === 'bool' ? 'selected' : ''}>ON/OFF</option>
+      <option value="longtext" ${p.type === 'longtext' ? 'selected' : ''}>長い文字</option>
     </select>
     ${def}
     <button class="rm" data-act="rm-param" data-i="${i}" aria-label="削除">×</button></div>`;

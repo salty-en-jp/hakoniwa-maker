@@ -3,6 +3,11 @@
 // 画面への表示は ui に任せる。ui は次の関数を持つオブジェクト:
 //   log(text, isError)  message(text, seconds)  hideMessage()
 //   setScore(n)         setHud(label, text)     showEnd(won, text, score, seconds)
+//   say(name, text) → Promise           choose(options, title) → Promise<番号>
+//   busy(会話や選択肢を出している間 true)   update(dt, input)(毎フレーム。会話の送りなど)
+//
+// 待てるスクリプト: ロジックのフックや合図の受け取りを async にでき、
+//   await game.wait(1)、await game.ui.say('名前', 'セリフ') のように上から順に書ける
 //
 // 合図(メッセージ): ロジックどうしが直接お互いを知らなくても連携できる仕組み
 //   self.on('damage', (data, from) => { ... })  合図を受け取る
@@ -57,6 +62,9 @@ export class Runtime {
     this.messageTimer = 0;
     this.messageDepth = 0;
     this.currentAsset = null; // いま動いているロジックの名前(エラー表示用)
+    this.paused = false;      // game.pause() 中は update・物理・接触を止める(会話や選択肢は動く)
+    this.realTime = 0;        // 一時停止中も進む時間。game.wait に使う
+    this.timers = [];         // game.wait の待ち [{ at, resolve }]
 
     this.compiled = new Map();
     for (const a of project.assets) {
@@ -78,8 +86,9 @@ export class Runtime {
   createGameApi() {
     const rt = this;
     return {
-      key: c => rt.input.isDown(c),
-      pressed: c => rt.input.wasPressed(c),
+      // 会話や選択肢を出している間は、ゲームの操作として届かない
+      key: c => !rt.ui.busy && rt.input.isDown(c),
+      pressed: c => !rt.ui.busy && rt.input.wasPressed(c),
       get score() { return rt.score; },
       set score(v) { rt.score = Number(v) || 0; rt.ui.setScore(rt.score); },
       addScore(n = 1) { rt.score += Number(n) || 0; rt.ui.setScore(rt.score); },
@@ -120,8 +129,61 @@ export class Runtime {
       },
       log(...args) {
         rt.ui.log(args.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' '));
+      },
+
+      /** sec 秒待つ。await game.wait(1) のように使う(一時停止中も進む) */
+      wait(sec = 0) {
+        if (rt.ended) return new Promise(() => {});
+        return new Promise(resolve => rt.timers.push({ at: rt.realTime + Math.max(0, Number(sec) || 0), resolve }));
+      },
+      /** 世界を止める(update・物理・接触)。会話・選択肢・game.wait は動く */
+      pause() { rt.paused = true; },
+      resume() { rt.paused = false; },
+      get paused() { return rt.paused; },
+
+      /** 会話ウィンドウと選択肢。どちらも await で終わるのを待てる */
+      ui: {
+        say(name, text) {
+          if (rt.ended) return new Promise(() => {});
+          if (text === undefined) { text = name; name = ''; }
+          return rt.ui.say(String(name ?? ''), String(text ?? ''));
+        },
+        choose(options, title = '') {
+          if (rt.ended) return new Promise(() => {});
+          const list = (Array.isArray(options) ? options : [options]).map(String);
+          return rt.ui.choose(list, String(title ?? ''));
+        },
+        get busy() { return !!rt.ui.busy; }
+      },
+
+      /**
+       * いちばん近いものを探す
+       * @param from self か {x,y,z}
+       * @param {{ tag?: string, maxDist?: number, listens?: string }} opts
+       *   listens: その合図を受け取れるものだけ(例: 'interact' で話しかけられるものだけ)
+       */
+      nearest(from, opts = {}) {
+        const origin = from && typeof from.worldPosition === 'function' ? from.worldPosition() : new THREE.Vector3(from?.x || 0, from?.y || 0, from?.z || 0);
+        const { tag, maxDist = Infinity, listens } = opts;
+        const p = new THREE.Vector3();
+        let best = null, bestD = maxDist;
+        for (const e of rt.ents) {
+          if (e.dead || e.api === from) continue;
+          if (tag !== undefined && e.tag !== tag) continue;
+          if (listens && !(e.handlers.get(listens) || []).length) continue;
+          const d = e.mesh.getWorldPosition(p).distanceTo(origin);
+          if (d <= bestD) { bestD = d; best = e; }
+        }
+        return best ? best.api : null;
       }
     };
+  }
+
+  /** async のフックや受け取りが投げたエラーも拾う */
+  watch(result, assetName, phase) {
+    if (result && typeof result.then === 'function') {
+      result.catch(err => { if (!this.ended) this.logError(assetName, phase, err); });
+    }
   }
 
   /**
@@ -174,6 +236,10 @@ export class Runtime {
       get startPosition() { return e.start.clone(); },
       get alive() { return !e.dead; },
       object3d: mesh,
+      /** 同じオブジェクトのロジックどうしで共有するメモ(例: HP は data.hp に今の値を書く) */
+      data: {},
+      /** その合図を受け取るロジックが付いているか */
+      listens(name) { return (e.handlers.get(name) || []).length > 0; },
       get body() { return e.body; }, set body(v) { if (BODIES[v] && !isEmptyShape(data.shape)) e.body = v; },
       /** 親の self(なければ null) */
       get parent() { return e.parent && !e.parent.dead ? e.parent.api : null; },
@@ -242,7 +308,7 @@ export class Runtime {
       if (typeof f !== 'function') continue;
       const prev = this.currentAsset;
       this.currentAsset = k.name;
-      try { f.apply(k.h, args); } catch (err) { k.broken = true; this.logError(k.name, name, err); }
+      try { this.watch(f.apply(k.h, args), k.name, name); } catch (err) { k.broken = true; this.logError(k.name, name, err); }
       finally { this.currentAsset = prev; }
     }
   }
@@ -261,7 +327,7 @@ export class Runtime {
       for (const h of list.slice()) {
         const prev = this.currentAsset;
         this.currentAsset = h.asset;
-        try { h.fn(data, from); } catch (err) { this.ui.log(`「${h.asset}」が合図「${name}」を受け取ったときにエラー: ${err && err.message ? err.message : err}`, true); }
+        try { this.watch(h.fn(data, from), h.asset, `合図「${name}」`); } catch (err) { this.ui.log(`「${h.asset}」が合図「${name}」を受け取ったときにエラー: ${err && err.message ? err.message : err}`, true); }
         finally { this.currentAsset = prev; }
         if (e.dead || this.ended) break;
       }
@@ -281,6 +347,16 @@ export class Runtime {
       if (this.messageTimer <= 0) this.ui.hideMessage();
     }
     if (this.ended) { this.input.endFrame(); return; }
+
+    // game.wait の待ちを終わらせる(一時停止中も進む)
+    this.realTime += dt;
+    if (this.timers.length) {
+      const due = this.timers.filter(t => t.at <= this.realTime);
+      this.timers = this.timers.filter(t => t.at > this.realTime);
+      due.forEach(t => t.resolve());
+    }
+
+    if (this.paused) { this.ui.update(dt, this.input); this.input.endFrame(); return; }
     this.time += dt;
 
     this.group.updateMatrixWorld(true);
@@ -304,6 +380,7 @@ export class Runtime {
       if (e.parent) e.parent.children = e.parent.children.filter(c => c !== e);
     }
     this.ents = this.ents.filter(e => !e.dead);
+    this.ui.update(dt, this.input);
     this.input.endFrame();
   }
 

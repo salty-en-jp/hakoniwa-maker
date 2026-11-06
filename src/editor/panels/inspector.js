@@ -70,6 +70,7 @@ function vecRow(label, key, v, step) {
 export function paramField(p, value, attrs, id) {
   if (p.type === 'bool') return `<label class="bool"><input type="checkbox" id="${id}" ${attrs} ${value ? 'checked' : ''}>${esc(p.key)}</label>`;
   if (p.type === 'number') return `<label>${esc(p.key)}<input type="number" step="any" id="${id}" ${attrs} value="${esc(value)}"></label>`;
+  if (p.type === 'longtext') return `<label class="wide">${esc(p.key)}<textarea id="${id}" ${attrs} rows="4" spellcheck="false">${esc(value)}</textarea></label>`;
   return `<label>${esc(p.key)}<input type="text" id="${id}" ${attrs} value="${esc(value)}"></label>`;
 }
 

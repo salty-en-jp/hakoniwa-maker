@@ -2,7 +2,7 @@
 
 import * as THREE from 'three';
 import { loadSavedProject } from './core/project.js';
-import { coinAthletic } from './samples/coin-athletic.js';
+import { DEFAULT_SAMPLE } from './samples/index.js';
 import { $, $$ } from './editor/dom.js';
 import { state, emit } from './editor/state.js';
 import { createViewport } from './editor/viewport.js';
@@ -35,10 +35,11 @@ $$('.modes button').forEach(b => b.addEventListener('click', () => {
 
 // 保存されたものがあれば続きから、なければサンプルで始める
 const saved = loadSavedProject();
-loadProject(saved || coinAthletic());
+loadProject(saved || DEFAULT_SAMPLE.create());
 state.selectedAssetId = state.project.assets.some(a => a.id === 'move') ? 'move' : state.selectedAssetId;
 showTab('inspect');
-select(state.project.objects.some(o => o.id === 'o2') ? 'o2' : null);
+const player = state.project.objects.find(o => o.tag === 'player');
+select(player ? player.id : null);
 
 // ループ
 const clock = new THREE.Clock();

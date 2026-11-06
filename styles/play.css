@@ -22,5 +22,25 @@ body.playing #hud{display:grid;gap:2px}
 .dpad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:2px;pointer-events:auto}
 .dpad button,.jump{touch-action:none;user-select:none;-webkit-user-select:none;border:1px solid rgba(255,255,255,.35);background:rgba(20,25,34,.45);color:#fff;font-size:16px;border-radius:10px;cursor:pointer}
 .dpad .u{grid-area:1/2}.dpad .l{grid-area:2/1}.dpad .r{grid-area:2/3}.dpad .d{grid-area:3/2}
-.jump{pointer-events:auto;width:82px;height:82px;border-radius:50%;font:inherit;font-weight:700}
-.dpad button.on,.jump.on{background:rgba(244,197,66,.6)}
+.abtns{display:grid;grid-template-columns:repeat(2,64px);grid-template-rows:repeat(2,64px);gap:6px;pointer-events:auto}
+.ab{touch-action:none;user-select:none;-webkit-user-select:none;border:1px solid rgba(255,255,255,.35);background:rgba(20,25,34,.45);color:#fff;border-radius:50%;cursor:pointer;font:inherit;font-size:12px;font-weight:700;line-height:1.1}
+.ab small{font-size:10px;font-weight:400;opacity:.8}
+.ab.jump{background:rgba(79,207,134,.35)}
+.dpad button.on,.ab.on{background:rgba(244,197,66,.6)}
+
+/* ---------- 会話ウィンドウと選択肢 ---------- */
+#dialog{position:absolute;left:12px;right:12px;bottom:12px;max-width:760px;margin-inline:auto;background:rgba(16,20,28,.92);border:2px solid #e8eaf0;border-radius:12px;padding:12px 16px 14px;color:#fff;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.25)}
+#dialogName{font-family:var(--font-display);color:var(--accent);font-size:15px;margin-bottom:2px;min-height:0}
+#dialogName:empty{display:none}
+#dialogText{font-size:17px;line-height:1.7;min-height:3.4em;white-space:pre-wrap;word-break:break-word}
+#dialog .dnext{position:absolute;right:14px;bottom:8px;font-size:12px;color:var(--accent);animation:blink 1s steps(2) infinite}
+#dialog.typing .dnext{visibility:hidden}
+@keyframes blink{50%{opacity:0}}
+#choice{position:absolute;right:12px;bottom:12px;min-width:200px;max-width:min(360px,calc(100% - 24px));background:rgba(16,20,28,.94);border:2px solid #e8eaf0;border-radius:12px;padding:10px;display:grid;gap:6px;color:#fff;box-shadow:0 6px 0 rgba(0,0,0,.25)}
+#choiceTitle{font-size:13px;color:#c9cfdb;white-space:pre-wrap;padding:2px 4px 4px;border-bottom:1px solid rgba(255,255,255,.15)}
+#choiceTitle:empty{display:none}
+#choiceOpts{display:grid;gap:2px}
+#choiceOpts button{text-align:left;background:none;border:0;color:#fff;font:inherit;font-size:16px;padding:6px 10px 6px 26px;border-radius:7px;cursor:pointer;position:relative}
+#choiceOpts button[aria-selected="true"]{background:rgba(244,197,66,.18)}
+#choiceOpts button[aria-selected="true"]::before{content:"▶";position:absolute;left:8px;color:var(--accent);font-size:12px;top:50%;transform:translateY(-50%)}
+@media (hover:none),(max-width:860px){ body.playing #dialog, body.playing #choice{bottom:170px} }

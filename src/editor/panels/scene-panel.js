@@ -4,7 +4,7 @@ import { SHAPES } from '../../core/defs.js';
 import { parseProject } from '../../core/project.js';
 import { treeOrder } from '../../core/tree.js';
 import { instancesOf } from '../../core/prefab.js';
-import { coinAthletic } from '../../samples/coin-athletic.js';
+import { SAMPLES } from '../../samples/index.js';
 import { $, esc, confirmTwice } from '../dom.js';
 import { state, on } from '../state.js';
 import { addObject, select, loadProject, setSettings, placePrefab, renamePrefab, deletePrefab } from '../actions.js';
@@ -38,12 +38,18 @@ function render() {
       <label>重力<input type="number" id="s-grav" step="1" value="${s.gravity}"></label>
     </div>
   </div>
+  <div class="sec"><h3>サンプルを開く</h3>
+    <div class="addrow">
+      <select id="d-sample" aria-label="サンプル">${SAMPLES.map(x => `<option value="${x.id}">${esc(x.name)}(${esc(x.genre)})</option>`).join('')}</select>
+      <button class="btn" id="d-open">開く</button>
+    </div>
+    <p class="hint">今のシーンは置きかわります。残したいときは、先に下の「JSONをコピー」で控えてください。</p>
+  </div>
   <div class="sec"><h3>データ</h3>
     <p class="hint">このブラウザに自動保存しています。別の端末へ移すときは、JSONをコピーして貼り付けてください。</p>
     <div class="actions">
       <button class="btn" id="d-copy">JSONをコピー</button>
       <span class="btn file">ファイルを読み込む<input type="file" id="d-file" accept=".json,application/json"></span>
-      <button class="btn danger" id="d-reset">サンプルに戻す</button>
     </div>
     <textarea id="io" spellcheck="false" placeholder="ここにJSONを貼り付けて「貼り付けを読み込む」"></textarea>
     <div class="actions"><button class="btn" id="d-paste">貼り付けを読み込む</button><span id="d-note" class="hint"></span></div>
@@ -119,7 +125,10 @@ function onClick(e) {
     try { navigator.clipboard.writeText(text).then(() => note('コピーしました'), manual); } catch (err) { manual(); }
   }
   if (btn.id === 'd-paste') importText($('#io', root).value);
-  if (btn.id === 'd-reset') confirmTwice(btn, 'もう一度押すと初期化', () => { loadProject(coinAthletic()); note('サンプルに戻しました'); });
+  if (btn.id === 'd-open') {
+    const sample = SAMPLES.find(x => x.id === $('#d-sample', root).value);
+    if (sample) confirmTwice(btn, '置きかえて開く', () => { loadProject(sample.create()); note(`「${sample.name}」を開きました`); });
+  }
 }
 
 function onInput(e) {

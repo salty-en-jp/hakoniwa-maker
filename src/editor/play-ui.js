@@ -10,7 +10,98 @@ export function createPlayUI() {
 
   $('#logClear').addEventListener('click', () => ui.clearLog());
 
+  // ---- 会話ウィンドウと選択肢 ----
+  // modal は今出ているもの。{ type: 'say' | 'choose', resolve, ready, ... }
+  // ready: 開いたフレームの入力では進めない(話しかけたキーで1行目が飛ばないように)
+  const dialog = $('#dialog'), dialogName = $('#dialogName'), dialogText = $('#dialogText');
+  const choiceBox = $('#choice'), choiceTitle = $('#choiceTitle'), choiceOpts = $('#choiceOpts');
+  const CHARS_PER_SEC = 40;
+  const ADVANCE_KEYS = ['Space', 'Enter', 'KeyE'];
+  let modal = null;
+
+  function closeModal() {
+    dialog.hidden = true;
+    choiceBox.hidden = true;
+    modal = null;
+  }
+  function advanceSay() {
+    if (!modal || modal.type !== 'say') return;
+    if (modal.shown < modal.text.length) {
+      modal.shown = modal.text.length;
+      renderSay();
+      return;
+    }
+    const done = modal.resolve;
+    closeModal();
+    done();
+  }
+  function renderSay() {
+    dialogText.textContent = modal.text.slice(0, Math.floor(modal.shown));
+    dialog.classList.toggle('typing', modal.shown < modal.text.length);
+  }
+  function renderChoice() {
+    Array.from(choiceOpts.children).forEach((b, i) => b.setAttribute('aria-selected', String(i === modal.index)));
+  }
+  function pick(i) {
+    if (!modal || modal.type !== 'choose') return;
+    const done = modal.resolve;
+    closeModal();
+    done(i);
+  }
+  dialog.addEventListener('click', () => advanceSay());
+  choiceOpts.addEventListener('click', e => {
+    const b = e.target.closest('button[data-i]');
+    if (b) pick(+b.dataset.i);
+  });
+
   const ui = {
+    get busy() { return !!modal; },
+    say(name, text) {
+      return new Promise(resolve => {
+        closeModal();
+        modal = { type: 'say', text, shown: 0, resolve, ready: false };
+        dialogName.textContent = name;
+        renderSay();
+        dialog.hidden = false;
+      });
+    },
+    choose(options, title) {
+      return new Promise(resolve => {
+        closeModal();
+        modal = { type: 'choose', options, index: 0, resolve, ready: false };
+        choiceTitle.textContent = title;
+        choiceOpts.innerHTML = '';
+        options.forEach((label, i) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.dataset.i = i;
+          b.setAttribute('role', 'option');
+          b.textContent = label;
+          choiceOpts.appendChild(b);
+        });
+        renderChoice();
+        choiceBox.hidden = false;
+      });
+    },
+    /** 毎フレーム呼ばれる。文字送りと、キーでの送り・選択 */
+    update(dt, input) {
+      if (!modal) return;
+      if (modal.type === 'say' && modal.shown < modal.text.length) {
+        modal.shown = Math.min(modal.text.length, modal.shown + dt * CHARS_PER_SEC);
+        renderSay();
+      }
+      if (!modal.ready) { modal.ready = true; return; }
+      const pressed = codes => codes.some(c => input.wasPressed(c));
+      if (modal.type === 'say') {
+        if (pressed(ADVANCE_KEYS)) advanceSay();
+      } else {
+        const n = modal.options.length;
+        if (pressed(['ArrowUp', 'KeyW'])) { modal.index = (modal.index + n - 1) % n; renderChoice(); }
+        if (pressed(['ArrowDown', 'KeyS'])) { modal.index = (modal.index + 1) % n; renderChoice(); }
+        if (pressed(ADVANCE_KEYS)) pick(modal.index);
+      }
+    },
+
     log(text, isError = false) {
       const d = document.createElement('div');
       d.textContent = text;
@@ -45,6 +136,7 @@ export function createPlayUI() {
       row.querySelector('.val').textContent = text;
     },
     showEnd(won, text, score, seconds) {
+      closeModal();
       const h = $('#endTitle');
       h.textContent = won ? 'クリア!' : 'ゲームオーバー';
       h.className = won ? '' : 'lose';
@@ -53,6 +145,7 @@ export function createPlayUI() {
     },
     /** 再生の終わりややり直しで、重ねた表示を片付ける */
     reset() {
+      closeModal(); // 待っていた await は終わらないまま捨てられる
       $('#endcard').hidden = true;
       toast.hidden = true;
       $('#hudLines').innerHTML = '';
