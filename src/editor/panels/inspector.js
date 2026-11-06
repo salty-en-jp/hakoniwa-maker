@@ -2,9 +2,14 @@
 
 import { SHAPES, BODIES } from '../../core/defs.js';
 import { findAsset } from '../../core/project.js';
+import { treeOrder, isInSubtree } from '../../core/tree.js';
+import { instanceRootOf, findPrefab, isModified } from '../../core/prefab.js';
 import { esc, confirmTwice } from '../dom.js';
 import { state, on, emit, selectedObject } from '../state.js';
-import { save, objectVisualChanged, duplicateObject, removeObject, openAsset } from '../actions.js';
+import {
+  save, objectVisualChanged, duplicateObject, removeObject, openAsset, addObject, setParent, descendantCount,
+  makePrefab, applyToPrefab, revertInstance, unpackInstance
+} from '../actions.js';
 
 let root;
 
@@ -15,7 +20,44 @@ export function initInspector(container) {
   root.addEventListener('click', onClick);
   on('selection-changed', render);
   on('assets-changed', render);
-  on('transform-changed', syncTransformFields);
+  on('transform-changed', o => { syncTransformFields(o); refreshPrefabBox(); });
+  on('prefabs-changed', render);
+}
+
+/** 「変更あり」の表示だけを描き直す(入力中の欄のフォーカスを失わないように) */
+function refreshPrefabBox() {
+  const o = selectedObject();
+  const box = root && root.querySelector('.prefab-box');
+  if (o && box) box.outerHTML = prefabBox(o);
+}
+
+/** 親の候補(自分と自分の子孫は除く)。ツリーの順に字下げして並べる */
+function parentOptions(o) {
+  const objs = state.project.objects;
+  const opts = treeOrder(objs)
+    .filter(({ obj }) => !isInSubtree(objs, obj.id, o.id))
+    .map(({ obj, depth }) => `<option value="${esc(obj.id)}" ${obj.id === o.parent ? 'selected' : ''}>${'　'.repeat(depth)}${SHAPES[obj.shape].glyph} ${esc(obj.name)}</option>`);
+  return `<option value="">(なし: 一番上)</option>${opts.join('')}`;
+}
+
+function prefabBox(o) {
+  const root = instanceRootOf(state.project, o.id);
+  const def = root && findPrefab(state.project, root.prefab);
+  if (!def) {
+    const n = descendantCount(o.id);
+    return `<div class="prefab-box"><p>${n ? `このオブジェクトと子 ${n} 個を` : 'このオブジェクトを'}型として保存し、何個でも置けるようにします。</p>
+      <div class="actions"><button class="btn" data-act="make-prefab">プレハブにする</button></div></div>`;
+  }
+  const modified = isModified(state.project, root);
+  const where = root.id === o.id ? 'のインスタンスです' : `のインスタンス「${esc(root.name)}」の一部です`;
+  return `<div class="prefab-box">
+    <p><b>${esc(def.name)}</b> ${where} ${modified ? '<span class="chip mod">変更あり</span>' : ''}</p>
+    <p>ここで変えた中身を「反映」すると、同じプレハブの他のものも全部そろいます。インスタンスごとに違ってよいのは、名前・位置・回転・大きさだけです。</p>
+    <div class="actions">
+      <button class="btn primary" data-act="apply-prefab" data-root="${esc(root.id)}" ${modified ? '' : 'disabled'}>プレハブに反映</button>
+      <button class="btn" data-act="revert-prefab" data-root="${esc(root.id)}" ${modified ? '' : 'disabled'}>元に戻す</button>
+      <button class="btn" data-act="unpack-prefab" data-root="${esc(root.id)}">つながりを切る</button>
+    </div></div>`;
 }
 
 function vecRow(label, key, v, step) {
@@ -64,13 +106,22 @@ function render() {
       <label>色<input type="color" id="f-color" data-f="color" value="${esc(o.color)}"></label>
     </div>
   </div>
-  <div class="sec"><h3>トランスフォーム</h3>
+  <div class="sec"><h3>親子</h3>
+    <label>親<select id="f-parent" data-f="parent">${parentOptions(o)}</select></label>
+    <div class="addrow">
+      <select id="f-childshape" aria-label="子として足す形">${Object.entries(SHAPES).map(([k, sh]) => `<option value="${k}">${sh.glyph} ${sh.label}</option>`).join('')}</select>
+      <button class="btn" data-act="add-child">子を足す</button>
+    </div>
+  </div>
+  <div class="sec"><h3>トランスフォーム${o.parent ? '<span class="sp hint">親から見た値</span>' : ''}</h3>
     ${vecRow('位置', 'pos', o.pos, 0.25)}${vecRow('回転°', 'rot', o.rot, 15)}${vecRow('大きさ', 'scale', o.scale, 0.1)}
   </div>
   <div class="sec"><h3>物理</h3>
-    <select id="f-body" data-f="body">${Object.entries(BODIES).map(([k, [label]]) =>
+    ${o.shape === 'empty'
+      ? '<p class="hint">形が「空」のものは当たり判定を持ちません。子をまとめる親として使います。</p>'
+      : `<select id="f-body" data-f="body">${Object.entries(BODIES).map(([k, [label]]) =>
       `<option value="${k}" ${k === o.body ? 'selected' : ''}>${label}</option>`).join('')}</select>
-    <p class="hint">${BODIES[o.body][1]}</p>
+    <p class="hint">${BODIES[o.body][1]}${o.parent && o.body === 'dynamic' ? ' 親がいるあいだは親にくっついて動き、重力では落ちません。' : ''}</p>`}
   </div>
   <div class="sec"><h3>ロジック <span class="count">${o.behaviors.length}</span></h3>
     ${o.behaviors.map(behaviorCard).join('') || '<p class="hint">まだロジックがありません。下から追加すると、再生中に動き出します。</p>'}
@@ -80,6 +131,7 @@ function render() {
       <button class="btn primary" data-act="add-beh">追加</button>
     </div>
   </div>
+  <div class="sec"><h3>プレハブ</h3>${prefabBox(o)}</div>
   <div class="sec"><div class="actions"><button class="btn" data-act="dup">複製</button><button class="btn danger" data-act="del">削除</button></div></div>`;
 }
 
@@ -118,13 +170,16 @@ function onInput(e) {
     b.params[t.dataset.pk] = v;
     save();
   }
+  refreshPrefabBox();
 }
 
 function onChange(e) {
   const t = e.target, o = selectedObject();
   if (!o) return;
-  if (t.dataset.f === 'shape') { o.shape = t.value; objectVisualChanged(o); emit('objects-changed'); }
+  if (t.dataset.f === 'shape') { o.shape = t.value; objectVisualChanged(o); emit('objects-changed'); render(); }
+  if (t.dataset.f === 'parent') setParent(o.id, t.value || null);
   if (t.dataset.f === 'body') { o.body = t.value; save(); render(); }
+  refreshPrefabBox();
 }
 
 function onClick(e) {
@@ -145,7 +200,16 @@ function onClick(e) {
       save(); render(); emit('objects-changed');
       break;
     case 'open-asset': openAsset(b.dataset.id); break;
+    case 'add-child': addObject(root.querySelector('#f-childshape').value, o.id); break;
+    case 'make-prefab': makePrefab(o.id); break;
+    case 'apply-prefab': applyToPrefab(b.dataset.root); break;
+    case 'revert-prefab': confirmTwice(b, 'もう一度押すと戻す', () => revertInstance(b.dataset.root)); break;
+    case 'unpack-prefab': unpackInstance(b.dataset.root); break;
     case 'dup': duplicateObject(o.id); break;
-    case 'del': confirmTwice(b, 'もう一度押すと削除', () => removeObject(o.id)); break;
+    case 'del': {
+      const n = descendantCount(o.id);
+      confirmTwice(b, n ? `子 ${n} 個ごと削除` : 'もう一度押すと削除', () => removeObject(o.id));
+      break;
+    }
   }
 }

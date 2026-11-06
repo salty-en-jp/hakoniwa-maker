@@ -38,7 +38,7 @@ body{
 .logo b{color:var(--accent);font-weight:400}
 .logo small{font-family:var(--font-ui);font-size:11px;color:var(--muted);letter-spacing:.08em}
 .modes{display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:2px;margin-left:auto}
-.modes button{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;cursor:pointer}
+.modes button{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;cursor:pointer;white-space:nowrap}
 .modes button[aria-pressed="true"]{background:var(--raise);color:var(--fg)}
 .modes button:disabled{opacity:.35;cursor:default}
 .play{font:inherit;font-weight:700;font-size:14px;border:0;border-radius:9px;padding:7px 14px;cursor:pointer;background:var(--go);color:#062312;white-space:nowrap}
@@ -70,6 +70,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
 input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .btn{font:inherit;font-size:13px;color:var(--fg);background:var(--raise);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;white-space:nowrap}
 .btn:hover{border-color:#4a5670}
+.btn:disabled{opacity:.4;cursor:default}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
 .btn.danger{color:#ff9a9a}
 .btn.armed{background:var(--stop);color:#2b0505;border-color:var(--stop)}

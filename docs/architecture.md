@@ -14,6 +14,8 @@ src/
     defs.js                定数(形、物理の種類、色の候補)と小さな道具
     object.js              オブジェクトのデータを作る
     project.js             プロジェクトのデータ形式、検証、ブラウザへの保存
+    tree.js                親子関係の道具(子孫の取り出し、ツリーの順、壊れた親子の修理)
+    prefab.js              プレハブの作成・配置・比較
     mesh.js                データから three.js のメッシュを作る
     input.js               再生中の入力の状態
     physics.js             簡易物理と接触の検出
@@ -58,6 +60,7 @@ main.js → editor/ → core/
 | `transform-changed` | ギズモでオブジェクトが動いた |
 | `assets-changed` | ロジックアセットが追加・削除・改名された |
 | `asset-open` | ロジック タブで特定のアセットを開いた |
+| `prefabs-changed` | プレハブが作られた・消された・反映された |
 | `tab-changed` | パネルのタブが切り替わった |
 | `play-changed` | 再生と停止が切り替わった |
 

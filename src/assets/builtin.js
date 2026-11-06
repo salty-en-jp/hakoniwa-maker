@@ -42,12 +42,13 @@ return {
     game.camera.lookAt(self.position);
   }
 };`},
-{id:'spin', name:'回転', desc:'回り続けます。speed は1秒あたりの回転数。',
- params:[{key:'speed',type:'number',def:0.5}],
+{id:'spin', name:'回転', desc:'回り続けます。speed は1秒あたりの回転数、axis は回す軸(x / y / z)。',
+ params:[{key:'speed',type:'number',def:0.5},{key:'axis',type:'text',def:'y'}],
  code:`// 回り続ける
+const axis = ['x', 'y', 'z'].includes(params.axis) ? params.axis : 'y';
 return {
   update(dt) {
-    self.rotation.y += params.speed * Math.PI * 2 * dt;
+    self.rotation[axis] += params.speed * Math.PI * 2 * dt;
   }
 };`},
 {id:'patrol', name:'往復移動', desc:'最初の位置を中心に、軸(x / y / z)に沿って行ったり来たりします。',

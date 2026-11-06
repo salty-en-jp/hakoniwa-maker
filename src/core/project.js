@@ -1,6 +1,7 @@
 // プロジェクト(シーン + アセット)のデータ形式、検証、保存
 
 import { SHAPES, BODIES } from './defs.js';
+import { repairParents } from './tree.js';
 
 export const STORAGE_KEY = 'hakoniwa-maker-v1';
 
@@ -17,18 +18,31 @@ export function normalizeProject(p) {
     a.name = a.name || 'ロジック';
     a.desc = a.desc || '';
   });
-  p.objects.forEach(o => {
-    o.name = o.name || 'オブジェクト';
-    o.tag = o.tag || '';
-    o.shape = SHAPES[o.shape] ? o.shape : 'box';
-    o.color = o.color || '#cccccc';
-    o.pos = o.pos || { x: 0, y: 0, z: 0 };
-    o.rot = o.rot || { x: 0, y: 0, z: 0 };
-    o.scale = o.scale || { x: 1, y: 1, z: 1 };
-    o.body = BODIES[o.body] ? o.body : 'static';
-    o.behaviors = (o.behaviors || []).map(b => ({ asset: b.asset, params: b.params || {} }));
+  p.objects.forEach(normalizeObject);
+  repairParents(p.objects);
+  p.prefabs = Array.isArray(p.prefabs) ? p.prefabs.filter(f => f && Array.isArray(f.objects) && f.objects.length) : [];
+  p.prefabs.forEach(f => {
+    f.name = f.name || 'プレハブ';
+    f.objects.forEach(normalizeObject);
+    repairParents(f.objects);
   });
+  // 型がなくなったインスタンスの印は外す
+  const prefabIds = new Set(p.prefabs.map(f => f.id));
+  p.objects.forEach(o => { if (o.prefab && !prefabIds.has(o.prefab)) delete o.prefab; });
   return p;
+}
+
+function normalizeObject(o) {
+  o.name = o.name || 'オブジェクト';
+  o.tag = o.tag || '';
+  o.shape = SHAPES[o.shape] ? o.shape : 'box';
+  o.color = o.color || '#cccccc';
+  o.pos = o.pos || { x: 0, y: 0, z: 0 };
+  o.rot = o.rot || { x: 0, y: 0, z: 0 };
+  o.scale = o.scale || { x: 1, y: 1, z: 1 };
+  o.body = BODIES[o.body] ? o.body : 'static';
+  o.behaviors = (o.behaviors || []).map(b => ({ asset: b.asset, params: b.params || {} }));
+  o.parent = o.parent || null;
 }
 
 export const isValidProject = p =>

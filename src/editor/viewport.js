@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { DEG, r3 } from '../core/defs.js';
-import { createMesh, updateMesh, disposeMesh } from '../core/mesh.js';
+import { createMesh, updateMesh, disposeMesh, needsRebuild } from '../core/mesh.js';
 
 /**
  * @param {HTMLElement} container
@@ -90,7 +90,7 @@ export function createViewport(container, { onPick, onTransform }) {
     );
     const ray = new THREE.Raycaster();
     ray.setFromCamera(ndc, camera);
-    const hit = ray.intersectObjects(editorGroup.children, false)[0];
+    const hit = ray.intersectObjects(editorGroup.children, true).find(h => h.object.userData.id);
     onPick(hit ? hit.object.userData.id : null);
   });
 
@@ -118,27 +118,61 @@ export function createViewport(container, { onPick, onTransform }) {
     /** プロジェクトの全オブジェクトのメッシュを作り直す */
     rebuild(project) {
       gizmo.detach();
-      meshes.forEach(m => { editorGroup.remove(m); disposeMesh(m); });
+      meshes.forEach(m => { m.removeFromParent(); disposeMesh(m); });
       meshes.clear();
-      project.objects.forEach(o => this.addObject(o));
+      project.objects.forEach(o => {
+        const m = createMesh(o, 'editor');
+        m.userData.id = o.id;
+        meshes.set(o.id, m);
+      });
+      project.objects.forEach(o => (meshes.get(o.parent) || editorGroup).add(meshes.get(o.id)));
     },
+    /** 1つ足す。親がいれば親の下に付ける(親を先に足すこと) */
     addObject(o) {
-      const m = createMesh(o);
+      const m = createMesh(o, 'editor');
       m.userData.id = o.id;
-      editorGroup.add(m);
+      (meshes.get(o.parent) || editorGroup).add(m);
       meshes.set(o.id, m);
     },
+    /** 1つ消す。子のメッシュも見えなくなるので、子は呼び出し側で別に消す */
     removeObject(id) {
       const m = meshes.get(id);
       if (!m) return;
-      if (gizmo.object === m) gizmo.detach();
-      editorGroup.remove(m);
+      if (gizmo.object === m) { gizmo.detach(); selectionBox.visible = false; }
+      m.removeFromParent();
       disposeMesh(m);
       meshes.delete(id);
     },
     updateObject(o) {
       const m = meshes.get(o.id);
-      if (m) updateMesh(m, o);
+      if (!m) return;
+      if (!needsRebuild(m, o)) { updateMesh(m, o); return; }
+      // 空 ↔ ふつうの形: 作り直して、子を付け替える
+      const fresh = createMesh(o, 'editor');
+      fresh.userData.id = o.id;
+      const parent = m.parent || editorGroup;
+      [...m.children].forEach(c => fresh.add(c));
+      parent.add(fresh);
+      const wasSelected = gizmo.object === m;
+      m.removeFromParent();
+      disposeMesh(m);
+      meshes.set(o.id, fresh);
+      if (wasSelected) this.attach(o.id);
+    },
+    /**
+     * 親を付け替える。見た目の位置・向き・大きさはそのままにして、
+     * 新しい親から見た値を返す
+     */
+    reparent(id, parentId) {
+      const m = meshes.get(id);
+      if (!m) return null;
+      (meshes.get(parentId) || editorGroup).attach(m);
+      const round1 = v => Math.round(v / DEG * 10) / 10;
+      return {
+        pos: { x: r3(m.position.x), y: r3(m.position.y), z: r3(m.position.z) },
+        rot: { x: round1(m.rotation.x), y: round1(m.rotation.y), z: round1(m.rotation.z) },
+        scale: { x: r3(m.scale.x), y: r3(m.scale.y), z: r3(m.scale.z) }
+      };
     },
 
     /** ギズモと選択枠を付ける。null で外す */

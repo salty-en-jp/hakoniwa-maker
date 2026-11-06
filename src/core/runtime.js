@@ -9,12 +9,16 @@
 //   other.send('damage', 1, self)               相手に合図を送る
 //   game.broadcast('alarm', data, 'enemy')       全員(またはタグの全員)に送る
 // 共通語(よく使う合図の名前と中身)は docs/messages.md にまとめている
+//
+// 親子: 子のメッシュは親のメッシュにぶら下がる。self.parent / self.children で行き来できる
 
 import * as THREE from 'three';
-import { BODIES } from './defs.js';
+import { BODIES, isEmptyShape } from './defs.js';
 import { findAsset, countAssetUsage } from './project.js';
+import { findPrefabByName } from './prefab.js';
+import { rootsOf } from './tree.js';
 import { createMesh, disposeMesh } from './mesh.js';
-import { stepPhysics, detectContacts } from './physics.js';
+import { stepPhysics, detectContacts, worldPos } from './physics.js';
 
 const PHASE_LABEL = { start: 'start', update: 'update', onCollide: 'onCollide', setup: '準備' };
 
@@ -64,8 +68,9 @@ export class Runtime {
     }
 
     this.game = this.createGameApi();
-    project.objects.forEach(d => this.spawn(d));
-    this.ents.slice().forEach(e => this.callHook(e, 'start'));
+    const spawned = [];
+    for (const root of rootsOf(project.objects)) spawned.push(...this.spawnTree(project.objects, root, null));
+    spawned.forEach(e => this.callHook(e, 'start'));
     ui.setScore(this.score);
   }
 
@@ -81,6 +86,7 @@ export class Runtime {
       get time() { return rt.time; },
       camera: rt.camera,
       message(text, sec = 1.6) { rt.ui.message(String(text)); rt.messageTimer = sec; },
+      hud(label, text) { rt.ui.setHud(String(label), text === undefined || text === null ? null : String(text)); },
       win(text) { rt.end(true, text); },
       lose(text) { rt.end(false, text); },
       find(name) {
@@ -94,13 +100,23 @@ export class Runtime {
           rt.deliver(e, name, data, undefined);
         }
       },
-      hud(label, text) { rt.ui.setHud(String(label), text === undefined || text === null ? null : String(text)); },
+      /**
+       * 名前で出す。プレハブの名前でも、シーンのオブジェクトの名前でもよい(子もまとめて出る)
+       * pos を省くと元の位置。出したもののルートの self を返す
+       */
       spawn(name, pos) {
-        const data = rt.project.objects.find(o => o.name === name);
-        if (!data) { rt.ui.log(`spawn: 「${name}」という名前のオブジェクトがありません`, true); return null; }
-        const e = rt.spawn(data, pos);
-        rt.callHook(e, 'start');
-        return e.api;
+        const prefab = findPrefabByName(rt.project, name);
+        let list, root;
+        if (prefab) { list = prefab.objects; root = prefab.objects[0]; }
+        else {
+          list = rt.project.objects;
+          root = list.find(o => o.name === name);
+        }
+        if (!root) { rt.ui.log(`spawn: 「${name}」という名前のプレハブやオブジェクトがありません`, true); return null; }
+        const made = rt.spawnTree(list, root, null, pos);
+        if (prefab) made[0].name = prefab.name;
+        made.forEach(e => rt.callHook(e, 'start'));
+        return made[0].api;
       },
       log(...args) {
         rt.ui.log(args.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' '));
@@ -108,19 +124,47 @@ export class Runtime {
     };
   }
 
-  /** オブジェクトのデータからエンティティを作り、付いているロジックを準備する */
-  spawn(data, pos) {
-    const mesh = createMesh(data);
-    if (pos) mesh.position.set(pos.x ?? mesh.position.x, pos.y ?? mesh.position.y, pos.z ?? mesh.position.z);
-    this.group.add(mesh);
+  /**
+   * オブジェクトとその子孫をまとめて出す。全員のメッシュと親子を作ってから、ロジックを準備する
+   * (準備の時点で self.children が揃っているように)
+   * @returns {object[]} 出したエンティティ(ルートが先頭)
+   */
+  spawnTree(list, rootData, parentEnt, pos) {
+    const made = [];
+    const build = (data, parent) => {
+      const e = this.createEntity(data, parent);
+      made.push(e);
+      for (const c of list) if (c.parent === data.id) build(c, e);
+    };
+    build(rootData, parentEnt);
+    if (pos) {
+      const m = made[0].mesh;
+      m.position.set(pos.x ?? m.position.x, pos.y ?? m.position.y, pos.z ?? m.position.z);
+      made[0].start.copy(m.position);
+      made.forEach(e => { e.mesh.updateWorldMatrix(true, false); worldPos(e, e.prevWorld); });
+    }
+    made.forEach(e => this.attachBehaviors(e));
+    return made;
+  }
+
+  /** エンティティ(再生中の1つのオブジェクト)を作る。ロジックはまだ付けない */
+  createEntity(data, parent) {
+    const mesh = createMesh(data, 'play');
+    (parent ? parent.mesh : this.group).add(mesh);
+    mesh.updateWorldMatrix(true, false);
 
     const e = {
-      uid: ++this.uid, name: data.name, tag: data.tag, body: data.body, mesh,
+      uid: ++this.uid, data, name: data.name, tag: data.tag,
+      body: isEmptyShape(data.shape) ? 'none' : data.body,
+      mesh, parent, children: [],
       velocity: new THREE.Vector3(), grounded: false, ground: null,
-      prevPos: mesh.position.clone(), start: mesh.position.clone(), dead: false, hooks: [],
+      prevWorld: mesh.getWorldPosition(new THREE.Vector3()), start: mesh.position.clone(),
+      dead: false, hooks: [],
       handlers: new Map() // 合図の名前 → [{ fn, asset }]
     };
+    if (parent) parent.children.push(e);
     const rt = this;
+
     // ロジックから見える self
     e.api = {
       get name() { return e.name; },
@@ -130,9 +174,26 @@ export class Runtime {
       get startPosition() { return e.start.clone(); },
       get alive() { return !e.dead; },
       object3d: mesh,
-      get body() { return e.body; }, set body(v) { if (BODIES[v]) e.body = v; },
-      setColor(c) { mesh.material.color.set(c); },
-      destroy() { e.dead = true; },
+      get body() { return e.body; }, set body(v) { if (BODIES[v] && !isEmptyShape(data.shape)) e.body = v; },
+      /** 親の self(なければ null) */
+      get parent() { return e.parent && !e.parent.dead ? e.parent.api : null; },
+      /** 子の self の配列 */
+      get children() { return e.children.filter(c => !c.dead).map(c => c.api); },
+      /** 子孫から名前で探す */
+      findChild(name) {
+        const stack = [...e.children];
+        while (stack.length) {
+          const c = stack.shift();
+          if (!c.dead && c.name === name) return c.api;
+          stack.push(...c.children);
+        }
+        return null;
+      },
+      /** ワールド座標での位置(親子の影響を全部足した位置) */
+      worldPosition(target = new THREE.Vector3()) { return mesh.getWorldPosition(target); },
+      setColor(c) { if (mesh.material) mesh.material.color.set(c); },
+      /** 消える。子も一緒に消える */
+      destroy() { rt.kill(e); },
       /** 合図を受け取る。同じ名前を何度登録してもよい */
       on(name, fn) {
         if (typeof fn !== 'function') return;
@@ -143,8 +204,12 @@ export class Runtime {
       send(name, data, from) { rt.deliver(e, String(name), data, from); }
     };
     this.ents.push(e);
+    return e;
+  }
 
-    for (const b of data.behaviors) {
+  /** オブジェクトに付いているロジックを準備する */
+  attachBehaviors(e) {
+    for (const b of e.data.behaviors) {
       const asset = findAsset(this.project, b.asset);
       if (!asset) continue;
       const fn = this.compiled.get(asset.id);
@@ -162,7 +227,11 @@ export class Runtime {
         this.currentAsset = prev;
       }
     }
-    return e;
+  }
+
+  kill(e) {
+    e.dead = true;
+    e.children.forEach(c => this.kill(c));
   }
 
   /** start / update / onCollide を呼ぶ。一度エラーを出したロジックは止める */
@@ -214,7 +283,8 @@ export class Runtime {
     if (this.ended) { this.input.endFrame(); return; }
     this.time += dt;
 
-    for (const e of this.ents) e.prevPos.copy(e.mesh.position);
+    this.group.updateMatrixWorld(true);
+    for (const e of this.ents) worldPos(e, e.prevWorld);
     for (const e of this.ents.slice()) if (!e.dead) this.callHook(e, 'update', dt);
     if (this.ended) { this.input.endFrame(); return; }
 
@@ -227,7 +297,12 @@ export class Runtime {
     }
     this.contacts = contacts;
 
-    for (const e of this.ents) if (e.dead) { this.group.remove(e.mesh); disposeMesh(e.mesh); }
+    for (const e of this.ents) {
+      if (!e.dead) continue;
+      e.mesh.removeFromParent();
+      disposeMesh(e.mesh);
+      if (e.parent) e.parent.children = e.parent.children.filter(c => c !== e);
+    }
     this.ents = this.ents.filter(e => !e.dead);
     this.input.endFrame();
   }

@@ -14,8 +14,12 @@ export const SHAPES = {
   sphere:   { label: '球',     glyph: '●' },
   cylinder: { label: '円柱',   glyph: '▮' },
   cone:     { label: '円錐',   glyph: '▲' },
-  ring:     { label: 'リング', glyph: '◎' }
+  ring:     { label: 'リング', glyph: '◎' },
+  empty:    { label: '空',     glyph: '◇' } // 見えないまとめ役。子をまとめる親に使う
 };
+
+/** 形が「空」なら当たり判定を持たない */
+export const isEmptyShape = shape => shape === 'empty';
 
 /** 物理の種類: [表示名, 説明] */
 export const BODIES = {

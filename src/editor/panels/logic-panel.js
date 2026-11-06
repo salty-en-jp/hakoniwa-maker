@@ -44,7 +44,10 @@ const API_HELP = `
   <dt>name / tag</dt><dd>名前とタグ</dd>
   <dt>startPosition</dt><dd>再生開始時の位置</dd>
   <dt>setColor('#ff0000')</dt><dd>色を変える</dd>
-  <dt>destroy()</dt><dd>消える</dd>
+  <dt>destroy()</dt><dd>消える(子も一緒に)</dd>
+  <dt>parent / children</dt><dd>親の self、子の self の配列</dd>
+  <dt>findChild('名前')</dt><dd>子孫から名前で探す</dd>
+  <dt>worldPosition()</dt><dd>親子の影響を足した本当の位置</dd>
   <h4>合図(ロジックどうしの連携)</h4>
   <dt>self.on('名前', (data, from) =&gt; …)</dt><dd>合図を受け取る</dd>
   <dt>other.send('名前', data, self)</dt><dd>相手に合図を送る</dd>
@@ -59,7 +62,7 @@ const API_HELP = `
   <dt>win('文字') / lose('文字')</dt><dd>クリア / ゲームオーバー</dd>
   <dt>find('名前')</dt><dd>名前で他のオブジェクトを探す</dd>
   <dt>findAll('タグ')</dt><dd>タグで全部探す(配列)</dd>
-  <dt>spawn('名前', {x,y,z})</dt><dd>そのオブジェクトをコピーして出す</dd>
+  <dt>spawn('名前', {x,y,z})</dt><dd>プレハブかオブジェクトを名前で出す(子もまとめて)</dd>
   <dt>time / camera / log(…)</dt><dd>経過秒、カメラ、ログ表示</dd>
   <dt>THREE</dt><dd>three.js 本体(Vector3 など)</dd>
 </dl><p class="hint">スマホの画面ボタンは矢印キーと Space として届きます。</p></details>`;

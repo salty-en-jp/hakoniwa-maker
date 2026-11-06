@@ -7,6 +7,7 @@
 //   transform-changed  ギズモでオブジェクトが動いた
 //   assets-changed     ロジックアセットが追加・削除・改名された
 //   asset-open         ロジック タブで特定のアセットを開きたい (assetId)
+//   prefabs-changed    プレハブが作られた・消された・名前が変わった・反映された
 //   tab-changed        パネルのタブが切り替わった (tab)
 //   play-changed       再生と停止が切り替わった (playing)
 

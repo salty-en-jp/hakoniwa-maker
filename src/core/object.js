@@ -13,7 +13,7 @@
  */
 export function makeObject(id, name, shape, color, pos, scale, body, behaviors = [], extra = {}) {
   return Object.assign({
-    id, name, tag: '', shape, color,
+    id, name, tag: '', parent: null, shape, color,
     pos: { x: pos[0], y: pos[1], z: pos[2] },
     rot: { x: 0, y: 0, z: 0 },
     scale: { x: scale[0], y: scale[1], z: scale[2] },
