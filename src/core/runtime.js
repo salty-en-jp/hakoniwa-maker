@@ -2,7 +2,13 @@
 //
 // 画面への表示は ui に任せる。ui は次の関数を持つオブジェクト:
 //   log(text, isError)  message(text, seconds)  hideMessage()
-//   setScore(n)         showEnd(won, text, score, seconds)
+//   setScore(n)         setHud(label, text)     showEnd(won, text, score, seconds)
+//
+// 合図(メッセージ): ロジックどうしが直接お互いを知らなくても連携できる仕組み
+//   self.on('damage', (data, from) => { ... })  合図を受け取る
+//   other.send('damage', 1, self)               相手に合図を送る
+//   game.broadcast('alarm', data, 'enemy')       全員(またはタグの全員)に送る
+// 共通語(よく使う合図の名前と中身)は docs/messages.md にまとめている
 
 import * as THREE from 'three';
 import { BODIES } from './defs.js';
@@ -11,6 +17,9 @@ import { createMesh, disposeMesh } from './mesh.js';
 import { stepPhysics, detectContacts } from './physics.js';
 
 const PHASE_LABEL = { start: 'start', update: 'update', onCollide: 'onCollide', setup: '準備' };
+
+/** 合図が合図を呼び続けて止まらなくなるのを防ぐ上限 */
+const MAX_MESSAGE_DEPTH = 32;
 
 /** ロジックアセットのコードを関数にする。書き間違いがあれば例外 */
 export function compileAsset(code) {
@@ -42,6 +51,8 @@ export class Runtime {
     this.ended = false;
     this.contacts = new Set();
     this.messageTimer = 0;
+    this.messageDepth = 0;
+    this.currentAsset = null; // いま動いているロジックの名前(エラー表示用)
 
     this.compiled = new Map();
     for (const a of project.assets) {
@@ -77,6 +88,13 @@ export class Runtime {
         return e ? e.api : null;
       },
       findAll(tag) { return rt.ents.filter(x => !x.dead && x.tag === tag).map(x => x.api); },
+      broadcast(name, data, tag) {
+        for (const e of rt.ents.slice()) {
+          if (e.dead || (tag !== undefined && e.tag !== tag)) continue;
+          rt.deliver(e, name, data, undefined);
+        }
+      },
+      hud(label, text) { rt.ui.setHud(String(label), text === undefined || text === null ? null : String(text)); },
       spawn(name, pos) {
         const data = rt.project.objects.find(o => o.name === name);
         if (!data) { rt.ui.log(`spawn: 「${name}」という名前のオブジェクトがありません`, true); return null; }
@@ -99,8 +117,10 @@ export class Runtime {
     const e = {
       uid: ++this.uid, name: data.name, tag: data.tag, body: data.body, mesh,
       velocity: new THREE.Vector3(), grounded: false, ground: null,
-      prevPos: mesh.position.clone(), start: mesh.position.clone(), dead: false, hooks: []
+      prevPos: mesh.position.clone(), start: mesh.position.clone(), dead: false, hooks: [],
+      handlers: new Map() // 合図の名前 → [{ fn, asset }]
     };
+    const rt = this;
     // ロジックから見える self
     e.api = {
       get name() { return e.name; },
@@ -112,7 +132,15 @@ export class Runtime {
       object3d: mesh,
       get body() { return e.body; }, set body(v) { if (BODIES[v]) e.body = v; },
       setColor(c) { mesh.material.color.set(c); },
-      destroy() { e.dead = true; }
+      destroy() { e.dead = true; },
+      /** 合図を受け取る。同じ名前を何度登録してもよい */
+      on(name, fn) {
+        if (typeof fn !== 'function') return;
+        if (!e.handlers.has(name)) e.handlers.set(name, []);
+        e.handlers.get(name).push({ fn, asset: rt.currentAsset || '?' });
+      },
+      /** このオブジェクトに合図を送る(他のロジックからは other.send(...) として使う) */
+      send(name, data, from) { rt.deliver(e, String(name), data, from); }
     };
     this.ents.push(e);
 
@@ -123,11 +151,15 @@ export class Runtime {
       if (!fn) continue;
       const params = {};
       asset.params.forEach(p => { params[p.key] = b.params[p.key] !== undefined ? b.params[p.key] : p.def; });
+      const prev = this.currentAsset;
+      this.currentAsset = asset.name;
       try {
         const hooks = fn(e.api, params, this.game, THREE);
         if (hooks && typeof hooks === 'object') e.hooks.push({ h: hooks, name: asset.name });
       } catch (err) {
         this.logError(asset.name, 'setup', err);
+      } finally {
+        this.currentAsset = prev;
       }
     }
     return e;
@@ -139,7 +171,33 @@ export class Runtime {
       if (k.broken || (e.dead && name !== 'onCollide')) continue;
       const f = k.h[name];
       if (typeof f !== 'function') continue;
+      const prev = this.currentAsset;
+      this.currentAsset = k.name;
       try { f.apply(k.h, args); } catch (err) { k.broken = true; this.logError(k.name, name, err); }
+      finally { this.currentAsset = prev; }
+    }
+  }
+
+  /** 合図を届ける。受け取り手のエラーは記録して、他の受け取り手には届け続ける */
+  deliver(e, name, data, from) {
+    if (e.dead || this.ended) return;
+    const list = e.handlers.get(name);
+    if (!list || !list.length) return;
+    if (this.messageDepth >= MAX_MESSAGE_DEPTH) {
+      this.ui.log(`合図「${name}」が合図を呼び続けているので止めました(${MAX_MESSAGE_DEPTH}段まで)`, true);
+      return;
+    }
+    this.messageDepth++;
+    try {
+      for (const h of list.slice()) {
+        const prev = this.currentAsset;
+        this.currentAsset = h.asset;
+        try { h.fn(data, from); } catch (err) { this.ui.log(`「${h.asset}」が合図「${name}」を受け取ったときにエラー: ${err && err.message ? err.message : err}`, true); }
+        finally { this.currentAsset = prev; }
+        if (e.dead || this.ended) break;
+      }
+    } finally {
+      this.messageDepth--;
     }
   }
 

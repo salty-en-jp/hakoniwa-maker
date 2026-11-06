@@ -11,7 +11,7 @@ import { initTabs } from './editor/panels/tabs.js';
 import { initScenePanel } from './editor/panels/scene-panel.js';
 import { initInspector } from './editor/panels/inspector.js';
 import { initLogicPanel } from './editor/panels/logic-panel.js';
-import { initPlayMode, stepPlay } from './editor/play-mode.js';
+import { initPlayMode, stepPlay, getRuntime } from './editor/play-mode.js';
 import { bindKeyboard } from './editor/keyboard.js';
 
 const viewport = createViewport($('#viewport'), {
@@ -52,4 +52,4 @@ function loop() {
 loop();
 
 // 開発中にコンソールから中身を見られるように
-window.hakoniwa = { state, viewport, emit };
+window.hakoniwa = { state, viewport, emit, get runtime() { return getRuntime(); } };

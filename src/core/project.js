@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS = { sky: '#a9cbe6', gravity: 22 };
 export function normalizeProject(p) {
   p.settings = Object.assign({}, DEFAULT_SETTINGS, p.settings || {});
   p.seq = p.seq || 1000;
+  p.removedBuiltins = Array.isArray(p.removedBuiltins) ? p.removedBuiltins : [];
   p.assets.forEach(a => {
     a.params = Array.isArray(a.params) ? a.params : [];
     a.code = a.code || '';

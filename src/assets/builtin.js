@@ -113,7 +113,87 @@ return {
       game.message('びよーん!', 0.8);
     }
   }
-};`}
+};`},
+
+// ---- ここから下は合図(damage / heal / died)でつながる部品 ----
+{id:'hp', name:'HP', desc:'damage の合図で減り、heal で増える。0 になると自分に died を送る。',
+ params:[{key:'max',type:'number',def:3},{key:'invincible',type:'number',def:1},{key:'showHud',type:'bool',def:false},{key:'label',type:'text',def:'HP'}],
+ code:`// 体力。damage で減り、heal で増え、0 で died を自分に送る
+let hp = params.max;
+let safe = 0; // 無敵の残り秒
+
+function show() {
+  if (params.showHud) {
+    game.hud(params.label, '♥'.repeat(hp) + '♡'.repeat(Math.max(0, params.max - hp)));
+  }
+}
+
+self.on('damage', (amount = 1, from) => {
+  if (safe > 0 || hp <= 0) return;
+  hp = Math.max(0, hp - amount);
+  safe = params.invincible;
+  show();
+  if (hp === 0) self.send('died', from);
+});
+
+self.on('heal', (amount = 1) => {
+  if (hp <= 0) return;
+  hp = Math.min(params.max, hp + amount);
+  show();
+});
+
+return {
+  start() { show(); },
+  update(dt) {
+    if (safe <= 0) return;
+    safe -= dt;
+    // 無敵のあいだは点滅する
+    self.object3d.visible = safe <= 0 || Math.floor(safe * 12) % 2 === 0;
+  }
+};`},
+{id:'contactDamage', name:'触れたらダメージ', desc:'target に damage を送る。上から踏まれたら逆に自分が damage を受ける。',
+ params:[{key:'amount',type:'number',def:1},{key:'target',type:'text',def:'player'},{key:'stompable',type:'bool',def:true},{key:'bounce',type:'number',def:9},{key:'knockback',type:'number',def:6}],
+ code:`// 触れた相手にダメージ。上から踏まれたら自分がダメージを受ける
+return {
+  onCollide(other) {
+    if (other.tag !== params.target) return;
+
+    const fromAbove = other.velocity.y < 0 && other.position.y > self.position.y;
+    if (params.stompable && fromAbove) {
+      self.send('damage', 1, other);
+      other.velocity.y = params.bounce; // 踏んだ側を跳ねさせる
+      return;
+    }
+
+    other.send('damage', params.amount, self);
+    other.velocity.y = params.knockback; // 少し跳ね飛ばす
+  }
+};`},
+{id:'healItem', name:'回復アイテム', desc:'target に触れられたら heal を送って消える。',
+ params:[{key:'amount',type:'number',def:1},{key:'target',type:'text',def:'player'}],
+ code:`// 触れられたら heal を送って消える
+return {
+  onCollide(other) {
+    if (other.tag !== params.target) return;
+    other.send('heal', params.amount, self);
+    game.message('回復!', 0.8);
+    self.destroy();
+  }
+};`},
+{id:'dieDestroy', name:'やられたら消える', desc:'died を受け取ったら点数を足して消える。',
+ params:[{key:'points',type:'number',def:0},{key:'message',type:'text',def:'やっつけた!'}],
+ code:`// died を受け取ったら消える
+self.on('died', () => {
+  if (params.points) game.addScore(params.points);
+  if (params.message) game.message(params.message, 1);
+  self.destroy();
+});
+return {};`},
+{id:'dieLose', name:'やられたらゲームオーバー', desc:'died を受け取ったらゲームオーバー。',
+ params:[{key:'message',type:'text',def:'力尽きた…'}],
+ code:`// died を受け取ったらゲームオーバー
+self.on('died', () => game.lose(params.message));
+return {};`}
 ];
 
 export const BUILTIN_MAP = Object.fromEntries(BUILTIN_ASSETS.map(a => [a.id, a]));
@@ -143,3 +223,20 @@ return {
     // 何かに触れた瞬間。other.tag で相手を見分ける
   }
 };`;
+
+/**
+ * 保存済みのプロジェクトに、あとから増えた組み込みアセットを足す
+ * 自分で消した組み込みアセット(removedBuiltins に記録)は戻さない
+ * @returns {number} 足した数
+ */
+export function addMissingBuiltins(project) {
+  const have = new Set(project.assets.map(a => a.id));
+  const removed = new Set(project.removedBuiltins || []);
+  let added = 0;
+  for (const a of BUILTIN_ASSETS) {
+    if (have.has(a.id) || removed.has(a.id)) continue;
+    project.assets.push(Object.assign(JSON.parse(JSON.stringify(a)), { builtin: true }));
+    added++;
+  }
+  return added;
+}

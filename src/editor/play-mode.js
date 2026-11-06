@@ -73,6 +73,9 @@ export function stopPlay() {
   emit('play-changed', false);
 }
 
+/** 再生中の Runtime(開発中の確認用) */
+export const getRuntime = () => runtime;
+
 /** 毎フレーム呼ぶ。再生中ならゲームを進める */
 export function stepPlay(dt) {
   if (state.playing && runtime) runtime.step(dt);

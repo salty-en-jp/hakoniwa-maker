@@ -4,6 +4,7 @@
 import { SHAPES, PALETTE, clone, r3 } from '../core/defs.js';
 import { makeObject } from '../core/object.js';
 import { findObject, nextObjectId, saveProject } from '../core/project.js';
+import { addMissingBuiltins } from '../assets/builtin.js';
 import { state, emit } from './state.js';
 
 let viewport = null;
@@ -25,6 +26,7 @@ export function select(id, opts = {}) {
 
 /** プロジェクトを丸ごと入れ替える */
 export function loadProject(project) {
+  addMissingBuiltins(project);
   state.project = project;
   state.selectedId = null;
   state.selectedAssetId = project.assets[0] ? project.assets[0].id : null;

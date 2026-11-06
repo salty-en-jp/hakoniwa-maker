@@ -45,11 +45,17 @@ const API_HELP = `
   <dt>startPosition</dt><dd>再生開始時の位置</dd>
   <dt>setColor('#ff0000')</dt><dd>色を変える</dd>
   <dt>destroy()</dt><dd>消える</dd>
+  <h4>合図(ロジックどうしの連携)</h4>
+  <dt>self.on('名前', (data, from) =&gt; …)</dt><dd>合図を受け取る</dd>
+  <dt>other.send('名前', data, self)</dt><dd>相手に合図を送る</dd>
+  <dt>game.broadcast('名前', data, 'タグ')</dt><dd>全員(タグ指定ならその全員)に送る</dd>
+  <dt>damage / heal / died</dt><dd>共通語。ダメージ量・回復量を data で渡す。died は HP が 0 になったとき自分に届く</dd>
   <h4>game</h4>
   <dt>key('ArrowUp')</dt><dd>押している間 true。KeyA〜KeyZ, Space なども</dd>
   <dt>pressed('Space')</dt><dd>押した瞬間だけ true</dd>
   <dt>score / addScore(n)</dt><dd>点数</dd>
   <dt>message('文字', 秒)</dt><dd>画面に表示</dd>
+  <dt>hud('名前', '文字')</dt><dd>左上に1行表示。null で消す</dd>
   <dt>win('文字') / lose('文字')</dt><dd>クリア / ゲームオーバー</dd>
   <dt>find('名前')</dt><dd>名前で他のオブジェクトを探す</dd>
   <dt>findAll('タグ')</dt><dd>タグで全部探す(配列)</dd>
@@ -222,6 +228,8 @@ function onClick(e) {
       const used = +b.dataset.used;
       confirmTwice(b, used ? `使用中の${used}か所からも外して削除` : 'もう一度押すと削除', () => {
         p.assets = p.assets.filter(x => x.id !== a.id);
+        // 組み込みを消したことを覚えておき、次に開いたときに戻さない
+        if (BUILTIN_MAP[a.id]) p.removedBuiltins = Array.from(new Set([...(p.removedBuiltins || []), a.id]));
         p.objects.forEach(o => { o.behaviors = o.behaviors.filter(x => x.asset !== a.id); });
         state.selectedAssetId = p.assets[0] ? p.assets[0].id : null;
         changed();

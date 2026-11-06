@@ -29,7 +29,21 @@ export function createPlayUI() {
       toast.hidden = false;
     },
     hideMessage() { toast.hidden = true; },
-    setScore(n) { $('#hud').textContent = '★ ' + n; },
+    setScore(n) { $('#hudScore').textContent = '★ ' + n; },
+    /** HUD に1行出す。同じ label なら書き換え、text が null なら消す */
+    setHud(label, text) {
+      const lines = $('#hudLines');
+      let row = Array.from(lines.children).find(r => r.dataset.label === label);
+      if (text === null) { if (row) row.remove(); return; }
+      if (!row) {
+        row = document.createElement('div');
+        row.dataset.label = label;
+        row.innerHTML = '<span class="lbl"></span><span class="val"></span>';
+        row.querySelector('.lbl').textContent = label;
+        lines.appendChild(row);
+      }
+      row.querySelector('.val').textContent = text;
+    },
     showEnd(won, text, score, seconds) {
       const h = $('#endTitle');
       h.textContent = won ? 'クリア!' : 'ゲームオーバー';
@@ -41,6 +55,7 @@ export function createPlayUI() {
     reset() {
       $('#endcard').hidden = true;
       toast.hidden = true;
+      $('#hudLines').innerHTML = '';
     }
   };
   return ui;

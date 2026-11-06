@@ -66,4 +66,5 @@ main.js → editor/ → core/
 - **組み込みロジック**: `src/assets/builtin.js` の `BUILTIN_ASSETS` に足します。すでに保存されているプロジェクトには自動で入らないので、「サンプルに戻す」で確かめてください
 - **サンプルステージ**: `src/samples/` にファイルを足し、`scene-panel.js` から読み込めるようにします
 - **形**: `core/defs.js` の `SHAPES` と `core/mesh.js` の `GEOMETRY` に足します
+- **合図の共通語**: [messages.md](messages.md) の表に足します
 - **ロジックから使える命令**: `self` は `Runtime.spawn()`、`game` は `Runtime.createGameApi()` に足し、`logic-panel.js` の説明と README の表も更新します
