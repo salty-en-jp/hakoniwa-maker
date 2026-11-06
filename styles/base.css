@@ -1,0 +1,79 @@
+/* 土台: 色とフォントのトークン、全体の骨組み、ヘッダー
+   レイアウト: 3Dの舞台 + タブ式パネル(PCでは右、スマホでは下)。単一のダークな作業台ルック */
+:root{
+  color-scheme: dark;
+  --ink:#141922;
+  --panel:#1b212d;
+  --raise:#252d3c;
+  --line:#323c4f;
+  --fg:#e8eaf0;
+  --muted:#8f99ac;
+  --accent:#f4c542;
+  --accent-ink:#241a02;
+  --go:#4fcf86;
+  --stop:#ff6767;
+  --x:#ff6b6b; --y:#5fd38a; --z:#5aa2ff;
+  --font-display:'DotGothic16','Zen Kaku Gothic New',monospace;
+  --font-ui:'Zen Kaku Gothic New','Hiragino Sans','Noto Sans JP','Yu Gothic',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html{height:100%;box-sizing:border-box}
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none!important}
+body{
+  height:100%;margin:0;overflow:hidden;
+  background:var(--ink);color:var(--fg);
+  font-family:var(--font-ui);font-size:14px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+  padding-block:0;
+}
+#app{height:100%;display:grid;grid-template-rows:auto 1fr;min-height:0}
+
+/* ---------- ヘッダー ---------- */
+.bar{display:flex;align-items:center;gap:10px;padding-block:10px}
+.logo{font-family:var(--font-display);font-size:20px;letter-spacing:.02em;white-space:nowrap;display:flex;align-items:baseline;gap:6px}
+.logo b{color:var(--accent);font-weight:400}
+.logo small{font-family:var(--font-ui);font-size:11px;color:var(--muted);letter-spacing:.08em}
+.modes{display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:2px;margin-left:auto}
+.modes button{background:none;border:0;color:var(--muted);font:inherit;font-size:13px;padding:5px 10px;border-radius:7px;cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--raise);color:var(--fg)}
+.modes button:disabled{opacity:.35;cursor:default}
+.play{font:inherit;font-weight:700;font-size:14px;border:0;border-radius:9px;padding:7px 14px;cursor:pointer;background:var(--go);color:#062312;white-space:nowrap}
+body.playing .play{background:var(--stop);color:#2b0505}
+
+/* ---------- 作業エリア ---------- */
+.work{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:10px;min-height:0;padding-block-end:12px}
+#viewport{position:relative;min-height:0;min-width:0;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#a9cbe6}
+#viewport canvas{display:block;width:100%;height:100%;touch-action:none}
+
+@media (max-width:860px){
+  .work{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(200px,50%) minmax(0,1fr)}
+  body.panel-max .work{grid-template-rows:120px minmax(0,1fr)}
+  body.playing .work{grid-template-rows:minmax(0,1fr)}
+  body.playing .panel{display:none}
+  .tabs .grow{display:block}
+  .logo small{display:none}
+}
+@media (max-width:420px){
+  .logo{font-size:17px}
+  .modes button{padding:5px 8px}
+}
+
+/* ---------- 共通の部品 ---------- */
+input,select,textarea{font:inherit;font-size:13px;color:var(--fg);background:var(--ink);border:1px solid var(--line);border-radius:7px;padding:6px 8px;min-width:0;width:100%}
+input[type=number]{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12.5px}
+input[type=color]{padding:2px;height:34px;cursor:pointer}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn{font:inherit;font-size:13px;color:var(--fg);background:var(--raise);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#4a5670}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.btn.danger{color:#ff9a9a}
+.btn.armed{background:var(--stop);color:#2b0505;border-color:var(--stop)}
+.link{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;padding:2px 4px;border-radius:5px}
+.link:hover{color:var(--fg)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

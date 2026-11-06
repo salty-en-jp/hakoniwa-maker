@@ -43,7 +43,7 @@ if (pick === 0) await game.loadScene('戦闘');
 
 ## 段階 1: 土台
 
-- [ ] ファイルを分けた構成に作り直す(エンジン本体、部品ライブラリ、エディタ)
+- [x] ファイルを分けた構成に作り直す(エンジン本体、部品ライブラリ、エディタ)→ [architecture.md](architecture.md)
 - [ ] 親子関係とプレハブ(部品を組んで1つのアセットとして保存・配置、置いたあとで分解)
 - [ ] 合図の仕組み(`other.send('damage', 30)` と `on('damage', ...)`)
 - [ ] 待てるスクリプト(`await game.wait(1)`、`await ui.say(...)`)

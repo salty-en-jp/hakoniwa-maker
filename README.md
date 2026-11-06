@@ -7,18 +7,21 @@
 最終的には、ジャンルに縛られずにあらゆるアセットを混ぜて組み合わせられる「カオスゲームエンジン」を目指しています。ちゃんと作れば、ちゃんとゲームになるものです。
 
 - 構想とアセット一覧: [docs/ideas.md](docs/ideas.md)
+- ファイル構成: [docs/architecture.md](docs/architecture.md)
 - 開発の計画: [docs/roadmap.md](docs/roadmap.md)
 
 ## 動かし方
 
-`index.html` をブラウザで開くだけで動きます。インストールやビルドは要りません。three.js と Web フォントは CDN から読み込むので、ネット接続は必要です。
-
-ローカルのファイルを直接開くと動かないブラウザでは、簡単なサーバーを立ててください。
+ES モジュールを使っているので、ファイルを直接開くのではなく、簡単なサーバーを立てて開いてください。インストールやビルドは要りません。
 
 ```sh
 python3 -m http.server 8000
 # → http://localhost:8000 を開く
 ```
+
+three.js と Web フォントは CDN から読み込むので、ネット接続が必要です。
+
+GitHub Pages を有効にすれば、そのままブラウザで遊べる URL にもなります。
 
 ## 画面の構成
 
@@ -127,9 +130,8 @@ return {
 - 当たり判定は回転しない箱で近似しています。回転したものや球の判定は大まかです
 - 再生中の入力はキーボードと画面ボタンだけです(マウス入力はまだありません)
 - 音、画面部品(HPバーや会話ウィンドウ)、複数シーン、3Dモデルの読み込みはまだありません
-- 全部が `index.html` の1ファイルに入っています。今後ファイルを分けて作り直す予定です
 
 ## 使っているもの
 
-- [three.js](https://threejs.org/) r128(OrbitControls、TransformControls)
+- [three.js](https://threejs.org/) r160(OrbitControls、TransformControls)
 - Google Fonts: DotGothic16、Zen Kaku Gothic New、JetBrains Mono

@@ -1,0 +1,77 @@
+/* 右(スマホでは下)のパネル: タブ、シーン、インスペクタ、ロジック */
+.panel{display:grid;grid-template-rows:auto 1fr;min-height:0;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tabs{display:flex;align-items:center;gap:2px;padding:6px;border-bottom:1px solid var(--line)}
+.tabs button{flex:1;background:none;border:0;color:var(--muted);font:inherit;font-size:13px;font-weight:700;padding:7px 4px;border-radius:7px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--raise);color:var(--fg)}
+.tabs .grow{flex:0 0 auto;font-weight:400;padding:7px 10px;display:none}
+.tabpane{overflow:auto;min-height:0;padding:12px 14px 18px}
+
+.sec{display:grid;gap:8px;padding-block:12px;border-bottom:1px solid var(--line)}
+.sec:first-child{padding-top:2px}
+.sec:last-child{border-bottom:0}
+h3{margin:0;font-size:11px;letter-spacing:.12em;color:var(--muted);font-weight:700;display:flex;align-items:center;gap:8px}
+h3 .count{font-family:var(--font-mono);background:var(--raise);color:var(--fg);border-radius:999px;padding:0 7px;letter-spacing:0}
+h3 .sp{margin-left:auto}
+label{display:grid;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hint{margin:0;font-size:12px;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.empty{padding:26px 6px;color:var(--muted);text-align:center;font-size:13px}
+.empty b{display:block;font-family:var(--font-display);font-weight:400;color:var(--fg);font-size:17px;margin-bottom:4px}
+.chip{font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--ink);color:var(--muted);border:1px solid var(--line);white-space:nowrap;flex:0 0 auto}
+.chip.tag{color:var(--accent);border-color:rgba(244,197,66,.4)}
+.ok-note{color:var(--go);font-size:12px}
+
+/* ---------- シーン ---------- */
+.shapes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.shapes button{display:grid;gap:1px;justify-items:center;padding:7px 2px}
+.shapes .g{font-size:16px;color:var(--accent);line-height:1}
+.shapes .t{font-size:11px;color:var(--muted)}
+#hier{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+#hier button{width:100%;display:flex;align-items:center;gap:8px;text-align:left;background:none;border:1px solid transparent;color:var(--fg);font:inherit;font-size:13px;padding:6px 8px;border-radius:7px;cursor:pointer;min-width:0}
+#hier button:hover{background:var(--raise)}
+#hier button[aria-current="true"]{background:var(--raise);border-color:var(--accent)}
+#hier .g{width:16px;text-align:center;flex:0 0 auto}
+#hier .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+textarea#io{font-family:var(--font-mono);font-size:11.5px;min-height:70px;resize:vertical}
+.file{position:relative;overflow:hidden}
+.file input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+/* ---------- インスペクタ ---------- */
+.vec{display:grid;grid-template-columns:52px repeat(3,minmax(0,1fr));gap:5px;align-items:center}
+.vec .vl{font-size:12px;color:var(--muted)}
+.ax{display:flex;align-items:center;gap:0;position:relative}
+.ax span{position:absolute;left:7px;font-family:var(--font-mono);font-size:10px;font-weight:600;pointer-events:none}
+.ax input{padding-left:20px}
+.ax-x span{color:var(--x)}.ax-y span{color:var(--y)}.ax-z span{color:var(--z)}
+.beh{border:1px solid var(--line);border-radius:9px;background:var(--ink);padding:9px 10px;display:grid;gap:8px}
+.beh-h{display:flex;align-items:center;gap:4px}
+.beh-name{font-weight:700;flex:1;min-width:0}
+.beh-name::before{content:"◆ ";color:var(--accent);font-size:10px;vertical-align:2px}
+.params{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 8px}
+.params label.bool{display:flex;align-items:center;gap:6px}
+.params label.bool input{width:18px}
+.addrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px}
+
+/* ---------- ロジック ---------- */
+.alist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.alist button{text-align:left;background:var(--ink);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:7px 9px;cursor:pointer;font:inherit;display:grid;gap:0;min-width:0}
+.alist button[aria-current="true"]{border-color:var(--accent);background:var(--raise)}
+.alist .an{font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.alist .au{font-size:11px;color:var(--muted)}
+.alist .new{border-style:dashed;color:var(--accent);align-content:center;font-weight:700}
+.ptable{display:grid;gap:5px}
+.prow{display:grid;grid-template-columns:minmax(0,1.1fr) 82px minmax(0,1fr) 28px;gap:5px;align-items:center}
+.prow input:not([type=checkbox]){font-family:var(--font-mono);font-size:12px}
+.prow .rm{background:none;border:0;color:var(--muted);cursor:pointer;font-size:15px}
+.phead{font-size:11px;color:var(--muted)}
+textarea.code{font-family:var(--font-mono);font-size:12.5px;line-height:1.55;min-height:300px;white-space:pre;overflow:auto;tab-size:2;resize:vertical;background:#10141b}
+.status{font-family:var(--font-mono);font-size:11.5px;padding:5px 9px;border-radius:7px;background:var(--ink);border:1px solid var(--line);word-break:break-word}
+.status.ok{color:var(--go)}
+.status.bad{color:#ff9a9a;border-color:rgba(255,103,103,.5)}
+details.api{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--ink)}
+details.api summary{cursor:pointer;font-weight:700;font-size:13px}
+.api dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;margin:10px 0 2px;font-size:12px}
+.api dt{font-family:var(--font-mono);color:var(--accent);white-space:nowrap}
+.api dd{margin:0;color:var(--muted)}
+.api h4{grid-column:1/-1;margin:8px 0 0;font-size:11px;letter-spacing:.12em;color:var(--fg)}

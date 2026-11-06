@@ -1,0 +1,24 @@
+/* 舞台の上に重なる表示: 編集中のバッジ、再生中の HUD、メッセージ、結果、ログ、タッチ操作 */
+.badge{position:absolute;left:10px;top:10px;font-size:12px;background:rgba(20,25,34,.72);color:var(--fg);padding:4px 9px;border-radius:999px;pointer-events:none;backdrop-filter:blur(4px)}
+body.playing .badge{display:none}
+#hud{position:absolute;left:10px;top:10px;display:none;font-family:var(--font-display);font-size:22px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.35);pointer-events:none}
+body.playing #hud{display:block}
+#toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-family:var(--font-display);font-size:20px;color:#fff;background:rgba(20,25,34,.75);padding:6px 16px;border-radius:10px;pointer-events:none;white-space:nowrap;max-width:90%;overflow:hidden;text-overflow:ellipsis}
+#endcard{position:absolute;inset:0;display:grid;place-items:center;background:rgba(20,25,34,.55);backdrop-filter:blur(2px)}
+#endcard .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 26px;text-align:center;display:grid;gap:10px;max-width:86%}
+#endcard h2{margin:0;font-family:var(--font-display);font-weight:400;font-size:30px;color:var(--accent)}
+#endcard h2.lose{color:var(--stop)}
+#endcard p{margin:0;color:var(--muted)}
+#endcard .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+#log{position:absolute;left:8px;right:8px;bottom:8px;max-height:40%;overflow:auto;background:rgba(20,25,34,.88);border:1px solid var(--line);border-radius:9px;font-family:var(--font-mono);font-size:11.5px;padding:6px 30px 6px 10px}
+#log div{padding:2px 0;white-space:pre-wrap;word-break:break-word}
+#log .err{color:#ff9a9a}
+#log .x{position:absolute;right:4px;top:3px;background:none;border:0;color:var(--muted);cursor:pointer;font-size:14px}
+
+#touch{position:absolute;inset:auto 0 0 0;display:none;justify-content:space-between;align-items:flex-end;padding:14px;pointer-events:none}
+@media (hover:none),(max-width:860px){ body.playing #touch{display:flex} body.playing #log{bottom:150px} }
+.dpad{display:grid;grid-template-columns:repeat(3,48px);grid-template-rows:repeat(3,48px);gap:2px;pointer-events:auto}
+.dpad button,.jump{touch-action:none;user-select:none;-webkit-user-select:none;border:1px solid rgba(255,255,255,.35);background:rgba(20,25,34,.45);color:#fff;font-size:16px;border-radius:10px;cursor:pointer}
+.dpad .u{grid-area:1/2}.dpad .l{grid-area:2/1}.dpad .r{grid-area:2/3}.dpad .d{grid-area:3/2}
+.jump{pointer-events:auto;width:82px;height:82px;border-radius:50%;font:inherit;font-weight:700}
+.dpad button.on,.jump.on{background:rgba(244,197,66,.6)}
